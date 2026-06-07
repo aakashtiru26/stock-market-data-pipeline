@@ -1,6 +1,8 @@
 import logging
+import os
 from fastapi import FastAPI
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.staticfiles import StaticFiles
 from routers import stocks, pipeline, analytics
 from models.database import engine, Base
 from pipeline.scheduler import start_scheduler
@@ -48,6 +50,11 @@ def shutdown_event():
     if hasattr(app.state, "scheduler"):
         app.state.scheduler.shutdown()
 
-@app.get("/")
-def read_root():
-    return {"message": "Welcome to the Stock Market Data Pipeline API. Check /docs for endpoints."}
+# Mount frontend statically
+frontend_path = os.path.abspath(os.path.join(os.path.dirname(__file__), "../frontend"))
+if os.path.exists(frontend_path):
+    app.mount("/", StaticFiles(directory=frontend_path, html=True), name="frontend")
+else:
+    @app.get("/")
+    def read_root():
+        return {"message": "Frontend not found. Check /docs for endpoints."}
