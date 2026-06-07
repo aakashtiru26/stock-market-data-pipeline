@@ -15,8 +15,16 @@ class Extractor:
         """
         try:
             logger.info(f"Fetching {period} historical data for {len(self.tickers)} tickers...")
+            
+            import requests
+            session = requests.Session()
+            session.headers.update({
+                "User-Agent": "Mozilla/5.0 (Windows NT 10.0; Win64; x64) AppleWebKit/537.36 (KHTML, like Gecko) Chrome/120.0.0.0 Safari/537.36",
+                "Accept": "application/json"
+            })
+            
             # group_by='ticker' returns a MultiIndex column DataFrame if multiple tickers are passed
-            data = yf.download(self.tickers, period=period, interval=interval, group_by='ticker', threads=True)
+            data = yf.download(self.tickers, period=period, interval=interval, group_by='ticker', threads=True, session=session)
             return data
         except Exception as e:
             logger.error(f"Error fetching historical data: {e}")
