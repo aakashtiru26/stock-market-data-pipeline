@@ -1,7 +1,8 @@
 import logging
 import pandas as pd
 from sqlalchemy.orm import Session
-from sqlalchemy.dialects.sqlite import insert
+from sqlalchemy.dialects.sqlite import insert as sqlite_insert
+from sqlalchemy.dialects.postgresql import insert as pg_insert
 from models.schemas import Price, Metric, Stock
 from datetime import datetime
 
@@ -22,7 +23,12 @@ class Loader:
         try:
             for i in range(0, len(records), chunk_size):
                 chunk = records[i:i + chunk_size]
-                stmt = insert(Price).values(chunk)
+                dialect_name = self.db.get_bind().dialect.name
+                if dialect_name == 'postgresql':
+                    stmt = pg_insert(Price).values(chunk)
+                else:
+                    stmt = sqlite_insert(Price).values(chunk)
+
                 on_duplicate_key_stmt = stmt.on_conflict_do_update(
                     index_elements=['ticker', 'date'],
                     set_=dict(
@@ -54,7 +60,12 @@ class Loader:
         try:
             for i in range(0, len(records), chunk_size):
                 chunk = records[i:i + chunk_size]
-                stmt = insert(Metric).values(chunk)
+                dialect_name = self.db.get_bind().dialect.name
+                if dialect_name == 'postgresql':
+                    stmt = pg_insert(Metric).values(chunk)
+                else:
+                    stmt = sqlite_insert(Metric).values(chunk)
+
                 on_duplicate_key_stmt = stmt.on_conflict_do_update(
                     index_elements=['ticker', 'date'],
                     set_=dict(
