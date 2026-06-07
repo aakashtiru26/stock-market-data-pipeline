@@ -12,9 +12,31 @@ class Loader:
     def __init__(self, db_session: Session):
         self.db = db_session
 
+    def _ensure_stocks(self, tickers: list):
+        if not tickers:
+            return
+        try:
+            records = [{"ticker": t, "company_name": t, "sector": "Unknown", "exchange": "Unknown"} for t in tickers]
+            dialect_name = self.db.get_bind().dialect.name
+            if dialect_name == 'postgresql':
+                stmt = pg_insert(Stock).values(records)
+            else:
+                stmt = sqlite_insert(Stock).values(records)
+            
+            on_duplicate_key_stmt = stmt.on_conflict_do_nothing(index_elements=['ticker'])
+            self.db.execute(on_duplicate_key_stmt)
+            self.db.commit()
+        except Exception as e:
+            self.db.rollback()
+            logger.error(f"Error ensuring stocks: {e}")
+            raise e
+
     def load_prices(self, prices_df: pd.DataFrame) -> int:
         if prices_df is None or prices_df.empty:
             return 0
+            
+        tickers = prices_df['ticker'].unique().tolist()
+        self._ensure_stocks(tickers)
         
         records = prices_df.to_dict('records')
         chunk_size = 100
